@@ -21,18 +21,15 @@ public class EncryptionData {
         q = findQ();
         modulus = p * q;
         phi = (p - 1) * (q - 1);
-        encryptionKey = findEncryptionKey(phi);
-        //decryptionKey = findDecryption(phi);
+        encryptionKey = findEncryptionKey();
+        decryptionKey = findDecryption();
     }
 
     private int findP() {
         //pick a random number and store the factors to compare later
-        p = ThreadLocalRandom.current().nextInt(5, 100);
-
-        System.out.println(p);
+        p = ThreadLocalRandom.current().nextInt(5, 50);
 
        pFactors = findFactors(p);
-       System.out.println(pFactors);
 
         return p;
     }
@@ -46,7 +43,7 @@ public class EncryptionData {
         boolean qFound = false;
 
         while(!qFound){
-            q = ThreadLocalRandom.current().nextInt(5, 100);
+            q = ThreadLocalRandom.current().nextInt(5, 50);
             if(q != p) {
                 //find factors of q
                 qFactors = findFactors(q);
@@ -104,7 +101,7 @@ public class EncryptionData {
 
     /**
      * This method is used to find an array of factors for p, q, phi, and encryptionKey
-     * @param num
+     * @param num can represent p to find pFactors, q to find qFactors, encryptionKey to find encryptionKeyFactors, phi to find phiFactors
      * @return factors ArrayList<Integer>
      */
     private ArrayList<Integer> findFactors(int num) {
@@ -123,54 +120,87 @@ public class EncryptionData {
 
     /**
      * The encryption key can be any number that does not have any common factors with phi AND is less than the modulus
-     * @param phi
      * @return encryptionKey
      */
-    private int findEncryptionKey(int phi) {
+    private int findEncryptionKey() {
         //find factors of phi
         ArrayList<Integer> phiFactors = findFactors(phi);
         ArrayList<Integer> encryptionKeyFactors;
         boolean encryptionKeyFound = false;
 
         while(!encryptionKeyFound) {
-            //pick random number that is less than the modulus
-            encryptionKey = ThreadLocalRandom.current().nextInt(3, modulus - 1);
+            //pick random number that is less than the modulus and greater than 1
+            encryptionKey = ThreadLocalRandom.current().nextInt(2, modulus - 1);
             encryptionKeyFactors = findFactors(encryptionKey);
 
-            //compare
-            if(isRelativelyPrime(phiFactors, encryptionKeyFactors)) {
+            //compare factors and double check that the encryptionKey is less than the modulus (some testing showed that it would not be for some reason)
+            if(isRelativelyPrime(phiFactors, encryptionKeyFactors) && encryptionKey < modulus) {
                 encryptionKeyFound = true;
             }
-
         }
 
         return encryptionKey;
     }
-/*
+
     /**
      * To find the decryption key, it would be (encryptionKey * decryptionKey) mod(phi) = 1
      * The decryption key does not need to be relatively prime to (mod n), unlike the encryption key
      *
-     * @param phi
      * @return decryptionKey
      */
-    /*
-    private int findDecryption(int phi) {
-        boolean decryptionKeyFound = false;
 
-        while(!decryptionKeyFound) {
-            decryptionKey = ThreadLocalRandom.current().nextInt(5, 100);
+    private int findDecryption() {
+        int[] gcdCoefficients = extendedEuclidean(phi, encryptionKey);
 
-            if((decryptionKey * encryptionKey) % phi == 1) {
-                decryptionKeyFound = true;
-            }
+        decryptionKey = Math.abs(gcdCoefficients[2]);
 
+        //verify that (encryptionKey * decryptionKey) mod(phi) = 1
+        boolean verify = verifyGcd((encryptionKey * decryptionKey), phi);
+        if(verify) {
+            System.out.println("This decryption key has been verified.");
+        } else {
+            System.out.println("This decryption key will not work since the remainder is not 1 when (e * d) mod (phi) = 1.");
         }
 
         return decryptionKey;
     }
 
-*/
+
+    /**
+     * Bezout's identity = ax + by = gcd(a,b)
+     * When the Euclidean Algorithm reverses and substitutes previous remainders, the end should be 1 = (encryptionKey)(decryptionKey) + (phi)(y)
+     *
+     * @return int[] {gcd, a, b}
+     */
+    private int[] extendedEuclidean(int x, int y) {
+
+        if(y == 0) {
+            return new int[] {x, 1, 0};
+        } else if (x >= y && y > 0){
+            int[] current = extendedEuclidean(y, x % y);
+            int gcd = current[0];
+            int a = current[2];
+
+            int b = current[1] - (x/y) * current[2];
+            return new int[] {gcd, a, b};
+        }
+        return new int[] {0,0,0};
+    }
+
+    /**
+     * This method is to verify that gcd((encryptionKey * decryptionKey), phi) = 1
+     * @return this should return 1
+     */
+    private boolean verifyGcd(int a, int b) {
+        int remainder = a % b;
+        if(remainder != 1) {
+            remainder = phi - remainder;
+        }
+        System.out.println("The remainder when verifying the decryption key is: " + remainder);
+
+        return remainder == 1;
+    }
+
     public int getModulus() {
         return modulus;
     }
@@ -220,19 +250,19 @@ public class EncryptionData {
     }
 
 
-    public ArrayList<Integer> getpFactors() {
+    public ArrayList<Integer> getPFactors() {
         return pFactors;
     }
 
-    public void setpFactors(ArrayList<Integer> pFactors) {
+    public void setPFactors(ArrayList<Integer> pFactors) {
         this.pFactors = pFactors;
     }
 
-    public ArrayList<Integer> getqFactors() {
+    public ArrayList<Integer> getQFactors() {
         return qFactors;
     }
 
-    public void setqFactors(ArrayList<Integer> qFactors) {
+    public void setQFactors(ArrayList<Integer> qFactors) {
         this.qFactors = qFactors;
     }
 
