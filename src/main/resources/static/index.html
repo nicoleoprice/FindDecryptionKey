@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" http-equiv="Content-Type" content="text/html">
     <title>Find the Decryption Key</title>
 </head>
 <body>
   <h1>Hello</h1>
-    <form action="/" method="GET">
-
-    </form>
+        <p>Encryption Data: <a href="/"></a></p>
+<p th:text="${encryptionData}" th:method="POST"></p>
 </body>
 </html>

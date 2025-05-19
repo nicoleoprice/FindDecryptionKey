@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * T
+ * This is an object used for RSA encryption. The p, q, encryptionKey, and decryptionKey variables are randomized.
+ * The modulus and phi are included within the parameters since it is referencing the established p and q variables.
  */
 public class EncryptionData {
     private int modulus;
@@ -16,7 +17,7 @@ public class EncryptionData {
     private ArrayList<Integer> pFactors;
     private ArrayList<Integer> qFactors;
 
-    EncryptionData() {
+    public EncryptionData() {
         p = findP();
         q = findQ();
         modulus = p * q;
@@ -119,7 +120,7 @@ public class EncryptionData {
     }
 
     /**
-     * The encryption key can be any number that does not have any common factors with phi AND is less than the modulus
+     * The encryption key can be any number that does not have any common factors with phi AND is less than phi
      * @return encryptionKey
      */
     private int findEncryptionKey() {
@@ -129,12 +130,12 @@ public class EncryptionData {
         boolean encryptionKeyFound = false;
 
         while(!encryptionKeyFound) {
-            //pick random number that is less than the modulus and greater than 1
-            encryptionKey = ThreadLocalRandom.current().nextInt(2, modulus - 1);
+            //pick random number that is less than phi and greater than 1
+            encryptionKey = ThreadLocalRandom.current().nextInt(2, phi - 1);
             encryptionKeyFactors = findFactors(encryptionKey);
 
-            //compare factors and double check that the encryptionKey is less than the modulus (some testing showed that it would not be for some reason)
-            if(isRelativelyPrime(phiFactors, encryptionKeyFactors) && encryptionKey < modulus) {
+            //compare factors
+            if(isRelativelyPrime(phiFactors, encryptionKeyFactors)) {
                 encryptionKeyFound = true;
             }
         }
@@ -152,7 +153,12 @@ public class EncryptionData {
     private int findDecryption() {
         int[] gcdCoefficients = extendedEuclidean(phi, encryptionKey);
 
-        decryptionKey = Math.abs(gcdCoefficients[2]);
+        decryptionKey = gcdCoefficients[2];
+
+        //decryptionKey has to be 0 < decryptionKey < phi
+        while(decryptionKey < 0) {
+            decryptionKey += phi;
+        }
 
         //verify that (encryptionKey * decryptionKey) mod(phi) = 1
         boolean verify = verifyGcd((encryptionKey * decryptionKey), phi);
@@ -173,18 +179,19 @@ public class EncryptionData {
      * @return int[] {gcd, a, b}
      */
     private int[] extendedEuclidean(int x, int y) {
-
-        if(y == 0) {
-            return new int[] {x, 1, 0};
-        } else if (x >= y && y > 0){
+        if (x >= y && y > 0){
             int[] current = extendedEuclidean(y, x % y);
+            //this code block after the recursion above will execute after recursion is complete
             int gcd = current[0];
             int a = current[2];
 
-            int b = current[1] - (x/y) * current[2];
+            //previousA - (x/y) * newA
+            int b = current[1] - (x/y) * a;
             return new int[] {gcd, a, b};
         }
-        return new int[] {0,0,0};
+
+        //if y = 0, then the remainder will be 0
+        return new int[] {x,1,0};
     }
 
     /**
